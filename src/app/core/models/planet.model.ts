@@ -1,10 +1,18 @@
 import { Country } from './country.model';
 
+export interface CloudConfig {
+  count: number;
+  color: string;
+  speed: number;
+  opacity: number;
+}
+
 export interface PlanetTheme {
   baseColor: string;
   atmosphereColor: string;
   shadowColor: string;
   gridColor: string;
+  clouds?: CloudConfig;
 }
 
 export interface Planet {

@@ -27,7 +27,12 @@ import { Planet } from '../../../core/models';
             <button class="close-btn" (click)="state.selectCountry(null)">✕</button>
           </div>
           <div class="panel-body">
-            <span class="label">Region ID:</span> {{ country.id }}
+            <div><span class="label">Region:</span> {{ country.id }}</div>
+            @if (country.terrain) {
+              <div class="terrain-tag" [attr.data-terrain]="country.terrain">
+                {{ country.terrain }}
+              </div>
+            }
           </div>
         </div>
       }
@@ -142,6 +147,19 @@ import { Planet } from '../../../core/models';
 
     .label {
       color: rgba(255, 255, 255, 0.4);
+    }
+
+    .terrain-tag {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .close-btn {
