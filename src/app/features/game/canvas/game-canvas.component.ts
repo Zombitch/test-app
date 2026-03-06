@@ -40,6 +40,7 @@ export class GameCanvasComponent implements AfterViewInit, OnDestroy {
   private inputHandler = new InputHandler();
   private animFrameId = 0;
   private resizeObserver!: ResizeObserver;
+  private lastFrameTime = 0;
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
@@ -51,7 +52,7 @@ export class GameCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObserver.observe(canvas.parentElement!);
     this.handleResize();
 
-    // Run render loop outside Angular zone for performance
+    this.lastFrameTime = performance.now();
     this.zone.runOutsideAngular(() => this.renderLoop());
   }
 
@@ -77,16 +78,34 @@ export class GameCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   private renderLoop = (): void => {
+    const now = performance.now();
+    const dt = Math.min((now - this.lastFrameTime) / 1000, 0.1); // cap at 100ms
+    this.lastFrameTime = now;
+
+    // Advance ship orbit
+    this.state.advanceShipOrbit(dt);
+
+    // Advance travel animation
+    this.state.advanceTravel(dt);
+
     const planet = this.state.currentPlanet();
+    const target = this.state.travelTarget();
+
     if (planet) {
-      this.renderer.render(planet, {
+      this.renderer.renderScene(planet, {
         rotationX: this.state.rotationX(),
         rotationY: this.state.rotationY(),
         zoom: this.state.zoom(),
         selectedCountryId: this.state.selectedCountry()?.id ?? null,
         hoveredCountryId: this.state.hoveredCountry()?.id ?? null,
+        shipOrbitAngle: this.state.shipOrbitAngle(),
+        travelPhase: this.state.travelPhase(),
+        travelProgress: this.state.travelProgress(),
+        targetPlanetName: target?.name ?? null,
+        targetAtmosphereColor: target?.theme?.atmosphereColor ?? null,
       });
     }
+
     this.animFrameId = requestAnimationFrame(this.renderLoop);
   };
 }

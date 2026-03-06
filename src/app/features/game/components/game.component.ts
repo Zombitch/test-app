@@ -52,6 +52,7 @@ import { Planet } from '../../../core/models';
             <button
               class="travel-btn"
               [style.borderColor]="planet.theme?.atmosphereColor ?? '#888'"
+              [disabled]="state.isTraveling()"
               (click)="travelTo(planet)"
             >
               <span class="travel-dot" [style.backgroundColor]="planet.theme?.atmosphereColor ?? '#888'"></span>
@@ -70,12 +71,6 @@ import { Planet } from '../../../core/models';
         <button class="zoom-btn" (click)="state.setZoom(-0.2)">−</button>
       </div>
 
-      <!-- Travel transition overlay -->
-      @if (state.isTraveling()) {
-        <div class="travel-overlay" (animationend)="onTravelAnimEnd()">
-          <span class="travel-text">Traveling to {{ state.travelTarget()?.name }}...</span>
-        </div>
-      }
     </div>
   `,
   styles: [`
@@ -264,29 +259,9 @@ import { Planet } from '../../../core/models';
       background: rgba(255, 255, 255, 0.12);
     }
 
-    .travel-overlay {
-      position: absolute;
-      inset: 0;
-      background: #050510;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: travel-flash 1.2s ease-in-out forwards;
-      z-index: 100;
-    }
-
-    .travel-text {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 1.2rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-    }
-
-    @keyframes travel-flash {
-      0% { opacity: 0; }
-      30% { opacity: 1; }
-      70% { opacity: 1; }
-      100% { opacity: 0; }
+    .travel-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
     }
   `],
 })
@@ -314,9 +289,5 @@ export class GameComponent implements OnInit {
 
   travelTo(planet: Planet): void {
     this.state.travelTo(planet);
-  }
-
-  onTravelAnimEnd(): void {
-    this.state.completeTravelTransition();
   }
 }
