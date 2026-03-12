@@ -56,14 +56,31 @@ import { TouchControlsComponent } from '../touch-controls/touch-controls';
         </div>
       }
 
+      <!-- ARIA status line -->
+      <div class="aria-status safe-area-top">
+        <span class="aria-status__label">ARIA</span>
+        <span class="aria-status__msg">{{ ariaStatusMsg() }}</span>
+      </div>
+
       <!-- Extraction prompt -->
       @if (features.isEnabled('extractionDecision') && showExtraction()) {
         <div class="extraction-prompt">
-          <p>Extraction point reached.</p>
-          <div class="extraction-prompt__actions">
-            <button class="btn btn--success" (click)="extract()">Extract</button>
-            <button class="btn" (click)="dismissExtraction()">Push deeper</button>
+          <div class="extraction-prompt__frame">
+            <div class="extraction-prompt__scanline"></div>
+            <p class="extraction-prompt__title">// EXTRACTION AVAILABLE</p>
+            <p class="extraction-prompt__desc">Uplink stable. Loot transfer ready.</p>
+            <div class="extraction-prompt__actions">
+              <button class="btn btn--success" (click)="extract()">EXTRACT</button>
+              <button class="btn" (click)="dismissExtraction()">PUSH DEEPER</button>
+            </div>
           </div>
+        </div>
+      }
+
+      <!-- Resource collection flash -->
+      @if (showResourceFlash()) {
+        <div class="resource-flash anim-fade-in">
+          <span [style.color]="lastResourceColor()">+{{ lastResourceAmount() }} {{ lastResourceType() }}</span>
         </div>
       }
     </div>
@@ -75,7 +92,7 @@ import { TouchControlsComponent } from '../touch-controls/touch-controls';
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
-      background: #2E3440;
+      background: #0d1117;
     }
     .game-canvas {
       display: block;
@@ -89,28 +106,93 @@ import { TouchControlsComponent } from '../touch-controls/touch-controls';
       right: 24px;
       z-index: 10;
     }
+
+    /* ARIA status line */
+    .aria-status {
+      position: absolute;
+      top: 40px;
+      left: 12px;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.6;
+    }
+    .aria-status__label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #B48EAD;
+      letter-spacing: 2px;
+      padding: 1px 6px;
+      border: 1px solid rgba(180, 142, 173, 0.3);
+      border-radius: 2px;
+    }
+    .aria-status__msg {
+      font-size: 0.65rem;
+      color: #4C566A;
+      font-style: italic;
+    }
+
+    /* Extraction prompt */
     .extraction-prompt {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(59, 66, 82, 0.95);
-      border: 1px solid #88C0D0;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
       z-index: 20;
       animation: fadeIn 0.3s ease;
     }
-    .extraction-prompt p {
-      font-size: 0.9rem;
-      margin-bottom: 12px;
+    .extraction-prompt__frame {
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(163, 190, 140, 0.4);
+      border-radius: 4px;
+      padding: 20px 24px;
+      position: relative;
+      overflow: hidden;
+      min-width: 260px;
+    }
+    .extraction-prompt__scanline {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(163, 190, 140, 0.3);
+      animation: scanDown 2s linear infinite;
+    }
+    @keyframes scanDown {
+      from { top: 0; }
+      to { top: 100%; }
+    }
+    .extraction-prompt__title {
+      font-size: 0.8rem;
       color: #A3BE8C;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .extraction-prompt__desc {
+      font-size: 0.7rem;
+      color: #4C566A;
+      margin-bottom: 16px;
     }
     .extraction-prompt__actions {
       display: flex;
       gap: 12px;
       justify-content: center;
+    }
+
+    /* Resource flash */
+    .resource-flash {
+      position: absolute;
+      top: 65px;
+      right: 12px;
+      z-index: 10;
+      pointer-events: none;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
     }
   `],
 })
@@ -124,6 +206,11 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
   readonly input = new InputHandler();
   readonly showExtraction = signal(false);
   readonly skillCooldownPct = signal(100);
+  readonly ariaStatusMsg = signal('Monitoring...');
+  readonly showResourceFlash = signal(false);
+  readonly lastResourceType = signal('');
+  readonly lastResourceAmount = signal(0);
+  readonly lastResourceColor = signal('#88C0D0');
 
   // Engine
   private gameLoop!: GameLoop;
@@ -146,6 +233,9 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
   private runTime = 0;
   private extractionDismissed = false;
   private objectiveReached = false;
+  private lastAriaUpdate = 0;
+  private resourceFlashTimer = 0;
+  private playerDamageFlash = 0;
 
   currentSkill() {
     const run = this.gameState.currentRun();
@@ -176,6 +266,7 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
     // ARIA message
     const msg = this.ariaService.generateRunStartMessage(sectorDef.name);
     this.ariaService.addMessage(msg);
+    this.ariaStatusMsg.set(msg);
 
     // Start game loop
     this.gameLoop = new GameLoop(
@@ -184,7 +275,6 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
     );
     this.gameLoop.start();
 
-    // Handle resize
     window.addEventListener('resize', this.onResize);
   }
 
@@ -275,12 +365,10 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
       if (hit.marked) hit.enemy.marked = true;
       if (hit.enemy.health <= 0) {
         hit.enemy.active = false;
-        // Split behavior
         if (hit.enemy.splitCount > 0) {
           this.enemies.push(splitEnemy(hit.enemy));
           this.enemies.push(splitEnemy(hit.enemy));
         }
-        // Generate loot
         if (this.features.isEnabled('lootDrops')) {
           const loot = generateLoot(hit.enemy);
           this.lootDrops.push(...loot);
@@ -299,13 +387,19 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
       } else {
         this.player.health = Math.max(0, this.player.health - totalDmg);
       }
-      this.player.damageStreak = 0; // Reset Security Loader streak
+      this.player.damageStreak = 0;
+      this.playerDamageFlash = 0.15;
       this.gameState.updateRun({
         playerHealth: this.player.health,
         playerShield: this.player.shield,
       });
     } else {
       this.player.damageStreak += dt;
+    }
+
+    // Damage flash decay
+    if (this.playerDamageFlash > 0) {
+      this.playerDamageFlash -= dt;
     }
 
     // Player death
@@ -320,6 +414,7 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
     const collected = updateLoot(this.lootDrops, this.player, magnetRadius, dt);
     for (const loot of collected) {
       this.gameState.addRunResource(loot.resourceType as ResourceType, loot.amount);
+      this.flashResource(loot.resourceType, loot.amount);
     }
 
     // Wave spawning
@@ -330,6 +425,7 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
         const spawned = spawnWave(wave, this.map.enemySpawnPoints);
         this.enemies.push(...spawned);
         this.currentWaveIndex++;
+        this.ariaStatusMsg.set(`Hostile wave detected. ${spawned.length} contacts.`);
       }
     }
 
@@ -339,6 +435,7 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
       if (distToObj < TILE_SIZE) {
         this.objectiveReached = true;
         this.gameState.updateRun({ primaryObjectiveComplete: true });
+        this.ariaStatusMsg.set('Objective complete. Extraction recommended.');
       }
     }
 
@@ -349,6 +446,21 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
         this.showExtraction.set(true);
       } else {
         this.showExtraction.set(false);
+      }
+    }
+
+    // ARIA status updates
+    this.lastAriaUpdate += dt;
+    if (this.lastAriaUpdate > 15) {
+      this.lastAriaUpdate = 0;
+      this.updateAriaStatus(run.enemiesKilled);
+    }
+
+    // Resource flash timer
+    if (this.resourceFlashTimer > 0) {
+      this.resourceFlashTimer -= dt;
+      if (this.resourceFlashTimer <= 0) {
+        this.showResourceFlash.set(false);
       }
     }
 
@@ -370,12 +482,53 @@ export class GameCanvasComponent implements OnInit, OnDestroy {
 
     this.renderer.updateCamera(this.player.position, this.map.width, this.map.height);
     this.renderer.clear();
+
+    // Render layers: map -> network -> streams -> loot -> enemies -> projectiles -> player -> FX
     this.renderer.renderMap(this.map, sector.tileColor, sector.wallColor);
+    this.renderer.renderNetworkTopology(this.map);
+    this.renderer.renderDataStreams(this.map.dataStreams);
     this.renderer.renderLoot(this.lootDrops, interpolation);
     this.renderer.renderEnemies(this.enemies, interpolation);
     this.renderer.renderProjectiles([...this.playerProjectiles, ...this.enemyProjectiles], interpolation);
     this.renderer.renderPlayer(this.player, interpolation);
+
+    // Post-processing
     this.renderer.renderFog(sector.fogColor);
+    this.renderer.renderScanlines();
+    this.renderer.renderVignette();
+
+    // Damage flash overlay
+    if (this.playerDamageFlash > 0) {
+      this.renderer.renderFog(`rgba(191, 97, 106, ${this.playerDamageFlash * 0.3})`);
+    }
+
+    // Occasional glitch
+    this.renderer.renderGlitchEffect(0.01);
+  }
+
+  private flashResource(type: string, amount: number): void {
+    const colors: Record<string, string> = {
+      cpu: '#88C0D0', ram: '#81A1C1', gpu: '#B48EAD',
+      data: '#EBCB8B', bitcoin: '#D08770',
+    };
+    this.lastResourceType.set(type.toUpperCase());
+    this.lastResourceAmount.set(amount);
+    this.lastResourceColor.set(colors[type] || '#D8DEE9');
+    this.showResourceFlash.set(true);
+    this.resourceFlashTimer = 0.8;
+  }
+
+  private updateAriaStatus(kills: number): void {
+    const hp = this.player.health / this.player.maxHealth;
+    if (hp < 0.3) {
+      this.ariaStatusMsg.set('Entity critical. Recommend extraction.');
+    } else if (kills > 20) {
+      this.ariaStatusMsg.set('Sector resistance decreasing. Push viable.');
+    } else if (this.objectiveReached) {
+      this.ariaStatusMsg.set('Objective secured. Your call, Operator.');
+    } else {
+      this.ariaStatusMsg.set('Scanning sector... all systems nominal.');
+    }
   }
 
   private onResize = (): void => {
