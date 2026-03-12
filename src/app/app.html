@@ -1,0 +1,11 @@
+@switch (gameState.phase()) {
+  @case ('hub') {
+    <app-hub />
+  }
+  @case ('run') {
+    <app-run />
+  }
+  @case ('result') {
+    <app-result />
+  }
+}

@@ -1,0 +1,285 @@
+// ==========================================
+// ARIA — Global Styles (Nord Theme, Mobile-First)
+// ==========================================
+
+// Nord Color Variables
+$nord0: #2E3440;
+$nord1: #3B4252;
+$nord2: #434C5E;
+$nord3: #4C566A;
+$nord4: #D8DEE9;
+$nord5: #E5E9F0;
+$nord6: #ECEFF4;
+$nord7: #8FBCBB;
+$nord8: #88C0D0;
+$nord9: #81A1C1;
+$nord10: #5E81AC;
+$nord11: #BF616A;
+$nord12: #D08770;
+$nord13: #EBCB8B;
+$nord14: #A3BE8C;
+$nord15: #B48EAD;
+
+// Resource colors
+$color-cpu: $nord8;
+$color-ram: $nord9;
+$color-gpu: $nord15;
+$color-data: $nord13;
+$color-bitcoin: $nord12;
+$color-hash: $nord7;
+
+// ==========================================
+// Reset & Base
+// ==========================================
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: $nord0;
+  color: $nord4;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  // Mobile: prevent pull-to-refresh, double-tap zoom
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// Prevent mobile viewport issues
+html {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+// ==========================================
+// Typography
+// ==========================================
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  color: $nord6;
+}
+
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 1rem; }
+
+.text-muted { color: $nord3; }
+.text-accent { color: $nord8; }
+.text-warning { color: $nord13; }
+.text-danger { color: $nord11; }
+.text-success { color: $nord14; }
+.text-special { color: $nord15; }
+
+// ==========================================
+// Utility Classes
+// ==========================================
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: 4px; }
+.gap-sm { gap: 8px; }
+.gap-md { gap: 12px; }
+.gap-lg { gap: 16px; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.p-sm { padding: 8px; }
+.p-md { padding: 12px; }
+.p-lg { padding: 16px; }
+
+// ==========================================
+// Component Base Styles
+// ==========================================
+
+.card {
+  background: $nord1;
+  border: 1px solid $nord2;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid $nord3;
+  border-radius: 6px;
+  background: $nord2;
+  color: $nord4;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  touch-action: manipulation;
+  min-height: 44px; // Mobile tap target
+
+  &:active {
+    background: $nord3;
+  }
+
+  &--primary {
+    background: $nord10;
+    border-color: $nord9;
+    color: $nord6;
+
+    &:active {
+      background: $nord9;
+    }
+  }
+
+  &--danger {
+    background: rgba($nord11, 0.2);
+    border-color: $nord11;
+    color: $nord11;
+
+    &:active {
+      background: rgba($nord11, 0.3);
+    }
+  }
+
+  &--success {
+    background: rgba($nord14, 0.2);
+    border-color: $nord14;
+    color: $nord14;
+
+    &:active {
+      background: rgba($nord14, 0.3);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// ==========================================
+// Resource Badge
+// ==========================================
+
+.resource-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &--cpu {
+    color: $color-cpu;
+    background: rgba($color-cpu, 0.1);
+  }
+  &--ram {
+    color: $color-ram;
+    background: rgba($color-ram, 0.1);
+  }
+  &--gpu {
+    color: $color-gpu;
+    background: rgba($color-gpu, 0.1);
+  }
+  &--data {
+    color: $color-data;
+    background: rgba($color-data, 0.1);
+  }
+  &--bitcoin {
+    color: $color-bitcoin;
+    background: rgba($color-bitcoin, 0.1);
+  }
+  &--hash {
+    color: $color-hash;
+    background: rgba($color-hash, 0.1);
+  }
+}
+
+// ==========================================
+// Progress Bars
+// ==========================================
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: $nord1;
+  border-radius: 3px;
+  overflow: hidden;
+
+  &__fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+
+    &--health { background: $nord11; }
+    &--shield { background: $nord8; }
+    &--stability { background: $nord14; }
+    &--power { background: $nord15; }
+    &--cooldown { background: $nord9; }
+  }
+}
+
+// ==========================================
+// Scrollbar (thin, Nord-themed)
+// ==========================================
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: $nord0;
+}
+::-webkit-scrollbar-thumb {
+  background: $nord3;
+  border-radius: 2px;
+}
+
+// ==========================================
+// Animations
+// ==========================================
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.anim-fade-in { animation: fadeIn 0.3s ease; }
+.anim-slide-up { animation: slideUp 0.3s ease; }
+.anim-pulse { animation: pulse 2s ease-in-out infinite; }
+
+// ==========================================
+// Safe Area (notch/island support)
+// ==========================================
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
