@@ -6,7 +6,6 @@ import { CommonModule } from '@angular/common';
 import { GameEngine } from './engine/game-engine';
 import { Renderer } from './engine/renderer';
 import { GamePhase, Role, BuildingType } from './engine/types';
-import { TILE_SIZE } from './engine/constants';
 
 @Component({
   selector: 'app-game',

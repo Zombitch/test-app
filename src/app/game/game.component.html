@@ -1,5 +1,5 @@
 <!-- Lobby Screen -->
-<div class="lobby" *ngIf="!gameStarted">
+<div class="lobby" [hidden]="gameStarted">
   <div class="lobby-content">
     <h1 class="game-title">VAMPIRISM</h1>
     <p class="subtitle">Survive the Night</p>
@@ -55,7 +55,7 @@
 </div>
 
 <!-- Game Screen -->
-<div class="game-container" *ngIf="gameStarted">
+<div class="game-container" [hidden]="!gameStarted">
   <!-- Canvas -->
   <canvas #gameCanvas
     (click)="onCanvasClick($event)"

@@ -1,3 +1,8 @@
+/* ===== HIDDEN ===== */
+[hidden] {
+  display: none !important;
+}
+
 /* ===== GLOBAL ===== */
 :host {
   display: block;
