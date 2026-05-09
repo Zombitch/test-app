@@ -1,0 +1,172 @@
+<!-- Lobby Screen -->
+<div class="lobby" [hidden]="gameStarted">
+  <div class="lobby-content">
+    <h1 class="game-title">VAMPIRISM</h1>
+    <p class="subtitle">Survive the Night</p>
+
+    <div class="role-select">
+      <h2>Choose Your Role</h2>
+      <div class="role-cards">
+        <div class="role-card survivor"
+             [class.selected]="selectedRole === Role.SURVIVOR"
+             (click)="selectRole(Role.SURVIVOR)">
+          <div class="role-icon">🏠</div>
+          <h3>Survivor</h3>
+          <p>Build defenses, gather resources, and survive the night against the vampire threat.</p>
+          <ul>
+            <li>Build towers & walls</li>
+            <li>Gather gold & wood</li>
+            <li>Create maze defenses</li>
+          </ul>
+        </div>
+        <div class="role-card vampire"
+             [class.selected]="selectedRole === Role.VAMPIRE"
+             (click)="selectRole(Role.VAMPIRE)">
+          <div class="role-icon">🧛</div>
+          <h3>Vampire</h3>
+          <p>Hunt survivors under the cover of darkness. Grow stronger with each kill.</p>
+          <ul>
+            <li>Blink teleport ability</li>
+            <li>Rage lifesteal mode</li>
+            <li>Power scales with kills</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <button class="start-btn" (click)="startGame()">
+      Start Game
+    </button>
+
+    <div class="controls-info">
+      <h3>Controls</h3>
+      <div class="control-grid">
+        <span>Click/Tap</span><span>Move / Place building</span>
+        <span>Right Click</span><span>Move (cancel build)</span>
+        <span>Scroll</span><span>Zoom in/out</span>
+        <span>B</span><span>Toggle build menu</span>
+        <span>1-5</span><span>Select building</span>
+        <span>Q</span><span>Blink (Vampire)</span>
+        <span>W</span><span>Rage (Vampire)</span>
+        <span>ESC</span><span>Cancel</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Game Screen -->
+<div class="game-container" [hidden]="!gameStarted">
+  <!-- Canvas -->
+  <canvas #gameCanvas
+    (click)="onCanvasClick($event)"
+    (contextmenu)="onCanvasRightClick($event)"
+    (mousemove)="onCanvasMouseMove($event)"
+    (wheel)="onCanvasWheel($event)"
+    (touchstart)="onTouchStart($event)"
+    (touchmove)="onTouchMove($event)"
+    (touchend)="onTouchEnd($event)">
+  </canvas>
+
+  <!-- Top HUD -->
+  <div class="hud-top">
+    <div class="phase-info">
+      <span class="phase-label" [class.night]="engine.state.phase === GamePhase.NIGHT">
+        {{ phaseLabel }}
+      </span>
+      <span class="phase-timer">{{ phaseTimer }}</span>
+    </div>
+    <div class="player-count">
+      <span class="survivors-count">🏠 {{ survivorCount }}</span>
+      <span class="vampires-count">🧛 {{ vampireCount }}</span>
+    </div>
+  </div>
+
+  <!-- Resource bar (Survivor) -->
+  <div class="hud-resources" *ngIf="localPlayer && localPlayer.role === Role.SURVIVOR">
+    <div class="resource gold">
+      <span class="resource-icon">💰</span>
+      <span class="resource-value">{{ localPlayer.gold | number:'1.0-0' }}</span>
+    </div>
+    <div class="resource wood">
+      <span class="resource-icon">🪵</span>
+      <span class="resource-value">{{ localPlayer.wood | number:'1.0-0' }}</span>
+    </div>
+  </div>
+
+  <!-- Build Menu (Survivor) -->
+  <div class="build-menu" *ngIf="localPlayer && localPlayer.role === Role.SURVIVOR">
+    <button class="build-toggle" (click)="toggleBuildMenu()" [class.active]="showBuildMenu">
+      🔨 Build
+    </button>
+    <div class="build-options" *ngIf="showBuildMenu">
+      <button *ngFor="let opt of engine.buildOptions; let i = index"
+              class="build-option"
+              [class.selected]="selectedBuilding === opt.type"
+              [class.disabled]="!canAfford(opt.type)"
+              (click)="selectBuilding(opt.type)">
+        <span class="build-icon">{{ opt.icon }}</span>
+        <span class="build-name">{{ opt.name }}</span>
+        <span class="build-cost">
+          <span *ngIf="opt.goldCost">💰{{ opt.goldCost }}</span>
+          <span *ngIf="opt.woodCost">🪵{{ opt.woodCost }}</span>
+        </span>
+        <span class="build-hotkey">{{ i + 1 }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Vampire Abilities -->
+  <div class="ability-bar" *ngIf="localPlayer && localPlayer.role === Role.VAMPIRE && localPlayer.abilities">
+    <div *ngFor="let ability of localPlayer.abilities; let i = index"
+         class="ability"
+         [class.on-cooldown]="ability.cooldown > 0"
+         [class.active]="ability.active"
+         (click)="engine.useLocalAbility(i)">
+      <div class="ability-icon">{{ ability.name === 'Blink' ? '⚡' : '🔥' }}</div>
+      <div class="ability-name">{{ ability.name }}</div>
+      <div class="ability-cd" *ngIf="ability.cooldown > 0">
+        {{ ability.cooldown | number:'1.0-0' }}s
+      </div>
+      <div class="ability-active" *ngIf="ability.active">ACTIVE</div>
+      <div class="ability-key">{{ i === 0 ? 'Q' : 'W' }}</div>
+    </div>
+    <div class="vampire-stats">
+      <span>Kills: {{ localPlayer.kills || 0 }}</span>
+      <span>DMG: {{ localPlayer.damage | number:'1.0-0' }}</span>
+    </div>
+  </div>
+
+  <!-- HP Bar -->
+  <div class="hud-hp" *ngIf="localPlayer && !localPlayer.isDead">
+    <div class="hp-bar-container">
+      <div class="hp-bar-fill"
+           [style.width.%]="(localPlayer.hp / localPlayer.maxHp) * 100"
+           [class.low]="localPlayer.hp / localPlayer.maxHp < 0.3">
+      </div>
+      <span class="hp-text">
+        {{ localPlayer.hp | number:'1.0-0' }} / {{ localPlayer.maxHp | number:'1.0-0' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Minimap -->
+  <div class="minimap-container">
+    <canvas #minimapCanvas width="160" height="160"></canvas>
+  </div>
+
+  <!-- Phase transition alert -->
+  <div class="phase-alert"
+       *ngIf="engine.state.phaseTimer < 10 && engine.state.phase === GamePhase.DAY"
+       [class.urgent]="engine.state.phaseTimer < 5">
+    🌙 Night is coming! {{ engine.state.phaseTimer | number:'1.0-0' }}s
+  </div>
+
+  <!-- Game Over overlay -->
+  <div class="game-over" *ngIf="engine.state.phase === GamePhase.GAME_OVER">
+    <div class="game-over-content">
+      <h1>{{ gameOverMessage }}</h1>
+      <p>Day {{ engine.state.dayCount }}</p>
+      <button class="restart-btn" (click)="restartGame()">Play Again</button>
+    </div>
+  </div>
+</div>
